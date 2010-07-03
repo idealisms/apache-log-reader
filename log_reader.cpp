@@ -380,7 +380,7 @@ ApacheReader_iternext(ApacheReader *self)
   }
 
   char *line;
-  int length;
+  Py_ssize_t length;
   if (-1 == PyString_AsStringAndSize(pyline, &line, &length)) {
     // null character in string; give up
     return NULL;
