@@ -28,7 +28,7 @@ ApacheReader_init(ApacheReader *self, PyObject *args)
 
   // first arg is a string
   if (PyArg_ParseTuple(args, "s|s", &filename, &format)) {
-    self->pyiterable = PyFile_FromString(filename, "r");
+    self->pyiterable = PyFile_FromString(filename, (char*)"r");
   } else {
     PyErr_Clear();
     // maybe first arg is a file object
@@ -104,7 +104,7 @@ int parse_string_token(const char *line, char end_token, std::string *buf) {
 
 // parse ip addresses
 // returns the number of characters consumed
-int parse_ips(char* line, PyObject* ret) {
+int parse_ips(const char *line, PyObject *ret) {
   PyObject *ips = PyList_New(0);
   std::string temp;
   int offset = parse_string_token(line, ' ', &temp);
@@ -125,20 +125,20 @@ int parse_ips(char* line, PyObject* ret) {
   Py_DECREF(ip);
 
   // add to ret
-  PyObject* key = PyString_FromString("ips");
+  PyObject *key = PyString_FromString("ips");
   PyDict_SetItem(ret, key, ips);
   Py_DECREF(key); Py_DECREF(ips);
   return offset;
 }
 
 // returns the number of characters consumed
-int parse_datetime(char *line, PyObject* ret) {
+int parse_datetime(const char *line, PyObject *ret) {
   std::string timestamp, timezone;
   int offset = parse_string_token(line + 1, ' ', &timestamp);
   offset += parse_string_token(line + offset + 2, ']', &timezone);
 
-  PyObject* key = PyString_FromString("time");
-  PyObject* value;
+  PyObject *key = PyString_FromString("time");
+  PyObject *value;
 
   tm time_struct;
   if (NULL == strptime(timestamp.c_str(), "%d/%b/%Y:%H:%M:%S", &time_struct)) {
@@ -146,11 +146,11 @@ int parse_datetime(char *line, PyObject* ret) {
     PyDict_SetItem(ret, key, Py_None);
   } else {
     // convert to a python datetime object
-    PyObject* datetime_mod = PyImport_AddModule("datetime");
-    PyObject* datetime_cls = PyObject_GetAttrString(datetime_mod, "datetime");
+    PyObject *datetime_mod = PyImport_AddModule("datetime");
+    PyObject *datetime_cls = PyObject_GetAttrString(datetime_mod, "datetime");
 
     // call datetime constructor
-    value = PyObject_CallFunction(datetime_cls, "iiiiii",
+    value = PyObject_CallFunction(datetime_cls, (char*)"iiiiii",
                                   time_struct.tm_year + 1900,
                                   time_struct.tm_mon + 1,
                                   time_struct.tm_mday,
@@ -173,7 +173,7 @@ int parse_datetime(char *line, PyObject* ret) {
 }
 
 // parse the http request and break it up into separate tokens
-int parse_request(char *line, PyObject* ret, bool escaped) {
+int parse_request(const char *line, PyObject *ret, bool escaped) {
   std::string req;
   char end_token = escaped ? '"' : ' ';
 
@@ -219,12 +219,12 @@ int parse_request(char *line, PyObject* ret, bool escaped) {
 
 // parse the next string token and assign it to name
 // returns the number of characters consumed
-int parse_string(const char* line, PyObject* ret, const char* name, bool escaped) {
+int parse_string(const char *line, PyObject *ret, const char *name, bool escaped) {
   std::string temp;
   char end_token = escaped ? '"' : ' ';
   int pos = parse_string_token(line, end_token, &temp);
-  PyObject* key = PyString_FromString(name);
-  PyObject* val = PyString_FromString(temp.c_str());
+  PyObject *key = PyString_FromString(name);
+  PyObject *val = PyString_FromString(temp.c_str());
   PyDict_SetItem(ret, key, val);
   Py_DECREF(key); Py_DECREF(val);
 
@@ -233,18 +233,18 @@ int parse_string(const char* line, PyObject* ret, const char* name, bool escaped
 
 // parse the next int token and assign it to name
 // returns the number of characters consumed
-int parse_int(char* line, PyObject* ret, char* name, bool escaped) {
+int parse_int(const char *line, PyObject *ret, const char *name, bool escaped) {
   std::string temp;
   char end_token = escaped ? '"' : ' ';
   int pos = parse_string_token(line, end_token, &temp);
-  PyObject* val;
+  PyObject *val;
   val = PyInt_FromString(const_cast<char*>(temp.c_str()), NULL, 10);
   if (NULL == val) {
     // failed to cast as int, use -1 instead
     PyErr_Clear();
     val = PyInt_FromLong(-1);
   }
-  PyObject* key = PyString_FromString(name);
+  PyObject *key = PyString_FromString(name);
   PyDict_SetItem(ret, key, val);
   Py_DECREF(key); Py_DECREF(val);
 
@@ -414,7 +414,7 @@ PyDoc_STRVAR(log_reader_parse_line_doc,
 static PyObject *
 ApacheReader_parse_line(PyObject *null_self, PyObject *args, PyObject *kw_args)
 {
-  static char *keywords[] = { "log_line", "format", NULL };
+  static char *keywords[] = { (char*)"log_line", (char*)"format", NULL };
   char *line = NULL, *fmt = NULL;
   int llen = -1;
   std::string format;
@@ -441,8 +441,8 @@ ApacheReader_parse_line(PyObject *null_self, PyObject *args, PyObject *kw_args)
 }
 
 static PyMemberDef ApacheReader_members[] = {
-  {"curline", T_OBJECT_EX, offsetof(ApacheReader, curline), 0,
-   "the last line that was read"},
+  {(char*)"curline", T_OBJECT_EX, offsetof(ApacheReader, curline), 0,
+   (char*)"the last line that was read"},
   {NULL}  /* Sentinel */
 };
 
@@ -498,7 +498,7 @@ static PyTypeObject ApacheReaderType = {
 PyMODINIT_FUNC
 initlog_reader(void)
 {
-  PyObject* m;
+  PyObject *m;
 
   ApacheReaderType.tp_new = PyType_GenericNew;
   if (PyType_Ready(&ApacheReaderType) < 0)
@@ -514,7 +514,7 @@ initlog_reader(void)
 
   Py_INCREF(&ApacheReaderType);
   PyModule_AddObject(m, "ApacheReader", (PyObject *)&ApacheReaderType);
-  PyObject* datetime = PyImport_ImportModule("datetime");
+  PyObject *datetime = PyImport_ImportModule("datetime");
   PyModule_AddObject(m, "datetime", datetime);
 
   // add class/static variables to the object
