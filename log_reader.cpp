@@ -77,7 +77,8 @@ ApacheReader_getiter(ApacheReader *self)
 
 // Helper method to grab a sequence of characters up to end_token.
 // returns the number of characters consumed
-int parse_string_token(const char *line, char end_token, std::string *buf) {
+int parse_string_token(const char *line, char end_token, std::string *buf,
+    bool comma_escapes_space=false) {
   int pos = 0;
   int buf_pos = 0;
 
@@ -87,7 +88,12 @@ int parse_string_token(const char *line, char end_token, std::string *buf) {
     // end of the line.
     if (end_token == '"' && line[pos] == '"' && line[pos + 1] == '"') {
       ++pos;
-    } else if (line[pos] == end_token) {
+    } else if (line[pos] == end_token && !(
+          end_token == ' ' &&
+          comma_escapes_space &&
+          pos > 0 &&
+          line[pos - 1] == ','
+          )) {
       // Now check to see if the current position is our end token.
       break;
     }
@@ -219,10 +225,11 @@ int parse_request(const char *line, PyObject *ret, bool escaped) {
 
 // parse the next string token and assign it to name
 // returns the number of characters consumed
-int parse_string(const char *line, PyObject *ret, const char *name, bool escaped) {
+int parse_string(const char *line, PyObject *ret, const char *name, bool escaped,
+    bool comma_escapes_space=false) {
   std::string temp;
   char end_token = escaped ? '"' : ' ';
-  int pos = parse_string_token(line, end_token, &temp);
+  int pos = parse_string_token(line, end_token, &temp, comma_escapes_space);
   PyObject *key = PyString_FromString(name);
   PyObject *val = PyString_FromString(temp.c_str());
   PyDict_SetItem(ret, key, val);
@@ -330,6 +337,9 @@ parse_line(char *line, const int length, const std::string &format)
             } else if ("Host" == named_format) {
               offset = parse_string(line + line_pos, ret, "host",
                                     escaped);
+            } else if (named_format.compare(0, 9, "upstream_") == 0) {
+              offset = parse_string(line + line_pos, ret, named_format.c_str(),
+                                    escaped, true);
             } else {
               offset = parse_string(line + line_pos, ret, named_format.c_str(),
                                     escaped);
@@ -353,8 +363,8 @@ parse_line(char *line, const int length, const std::string &format)
       // match token exactly
       if (line[line_pos] != f) {
         char err[1024];
-        sprintf(err, "Input doesn't match format string: %c != %c", f,
-                line[line_pos]);
+        sprintf(err, "Input doesn't match format string: %c != %c at col %d", f,
+                line[line_pos], line_pos);
         PyErr_SetString(PyExc_ValueError, err);
         return NULL;
       }
