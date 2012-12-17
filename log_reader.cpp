@@ -269,6 +269,7 @@ parse_line(char *line, const int length, const std::string &format)
   // parse the format string
   int line_pos = 0, end;
   bool escaped = false; // keep track of whether we're inside quotes or not
+  bool in_optional_part = false; // keep track of whether the rest matters
   for (unsigned int i = 0; i < format.length(); ++i) {
     // debugging
     //fprintf(stderr, "\nformat:|%s|\n", format.c_str() + i);
@@ -354,6 +355,10 @@ parse_line(char *line, const int length, const std::string &format)
           }
           break;
 
+        case '?': // rest is optional
+          in_optional_part = true;
+          break;
+
         default:
           //sprintf("unknown format char: %c\n", f);
           PyErr_SetString(PyExc_ValueError, "Unknown format char");
@@ -364,6 +369,9 @@ parse_line(char *line, const int length, const std::string &format)
     } else {
       // match token exactly
       if (line[line_pos] != f) {
+        if (in_optional_part && !escaped && line[line_pos] == '\n') {
+          break;
+        }
         char err[1024];
         sprintf(err, "Input doesn't match format string: %c != %c at col %d", f,
                 line[line_pos], line_pos);

@@ -144,5 +144,17 @@ class ApacheReaderTest(unittest.TestCase):
     self.assertEquals(lines[2], {'upstream_Foo': 'success1', 'upstream_Bar': 'fail2, success2' })
     self.assertEquals(lines[3], {'upstream_Foo': 'fail1, success1', 'upstream_Bar': 'fail2, success2' })
 
+  def testOptionalFields(self):
+    input = ('foo\n',
+             'foo2 bar\n',
+             'foo3 bar2 baz\n',
+             'foo3 - baz2')
+    reader = log_reader.ApacheReader(iter(input), '%{Foo}i%? %{Bar}i %{Baz}i')
+    lines = [f for f in reader]
+    self.assertEquals(lines[0], {'Foo': 'foo'})
+    self.assertEquals(lines[1], {'Foo': 'foo2', 'Bar': 'bar'})
+    self.assertEquals(lines[2], {'Foo': 'foo3', 'Bar': 'bar2', 'Baz': 'baz'})
+    self.assertEquals(lines[3], {'Foo': 'foo3', 'Bar': '-', 'Baz': 'baz2'})
+
 if '__main__' == __name__:
   unittest.main()
