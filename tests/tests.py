@@ -132,5 +132,17 @@ class ApacheReaderTest(unittest.TestCase):
     self.assertEquals(lines[0], {'Foo': 'test', 'Bar': 'test2' })
     self.assertEquals(lines[1], {'Foo': 'another test', 'Bar': 'more spaces'})
 
+  def testNginxUpstreamCommaSpaceSeparation(self):
+    input = ('success1 success2\n',
+             'fail1, success1 success2\n',
+             'success1 fail2, success2\n',
+             'fail1, success1 fail2, success2')
+    reader = log_reader.ApacheReader(iter(input), '%{upstream_Foo}i %{upstream_Bar}i')
+    lines = [f for f in reader]
+    self.assertEquals(lines[0], {'upstream_Foo': 'success1', 'upstream_Bar': 'success2' })
+    self.assertEquals(lines[1], {'upstream_Foo': 'fail1, success1', 'upstream_Bar': 'success2' })
+    self.assertEquals(lines[2], {'upstream_Foo': 'success1', 'upstream_Bar': 'fail2, success2' })
+    self.assertEquals(lines[3], {'upstream_Foo': 'fail1, success1', 'upstream_Bar': 'fail2, success2' })
+
 if '__main__' == __name__:
   unittest.main()
