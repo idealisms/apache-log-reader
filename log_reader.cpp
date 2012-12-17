@@ -15,6 +15,7 @@ typedef struct {
 const char *kCOMBINED = \
 "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"";
 const char *kCOMMON = "%h %l %u %t \"%r\" %>s %b";
+const char kUPSTREAM_PREFIX[] = "upstream_";
 
 // Ctor expects either a filename or a file object.  Second argument is an
 // optional string describing the log file format.  Default format is apache
@@ -337,7 +338,8 @@ parse_line(char *line, const int length, const std::string &format)
             } else if ("Host" == named_format) {
               offset = parse_string(line + line_pos, ret, "host",
                                     escaped);
-            } else if (named_format.compare(0, 9, "upstream_") == 0) {
+            } else if (named_format.compare(0, sizeof(kUPSTREAM_PREFIX) - 1,
+                                            kUPSTREAM_PREFIX) == 0) {
               offset = parse_string(line + line_pos, ret, named_format.c_str(),
                                     escaped, true);
             } else {
